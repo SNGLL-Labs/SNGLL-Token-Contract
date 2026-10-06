@@ -11,7 +11,9 @@
     "upgrade:amoy": "hardhat run scripts/upgrade.js --network amoy",
     "upgrade:polygon": "hardhat run scripts/upgrade.js --network polygon",
     "roles:amoy": "hardhat run scripts/transferRoles.js --network amoy",
-    "roles:polygon": "hardhat run scripts/transferRoles.js --network polygon"
+    "roles:polygon": "hardhat run scripts/transferRoles.js --network polygon",
+    "governance:amoy": "hardhat run scripts/deployGovernance.js --network amoy",
+    "governance:polygon": "hardhat run scripts/deployGovernance.js --network polygon"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
