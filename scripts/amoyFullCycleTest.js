@@ -40,17 +40,27 @@ async function main() {
 
   const token = await hre.ethers.getContractAt("SNGLLToken", tokenAddr);
 
-  // 1) Activate votes.
-  console.log("\n[1] delegate() ...");
-  await (await token.delegate(deployer.address)).wait();
-  console.log("  votes:", hre.ethers.formatUnits(await token.getVotes(deployer.address), 18));
+  // 1) Activate votes (skip if already delegated).
+  const currentDelegate = (await token.delegates(deployer.address)).toLowerCase();
+  if (currentDelegate !== deployer.address.toLowerCase()) {
+    console.log("\n[1] delegate() ...");
+    await (await token.delegate(deployer.address)).wait();
+  }
+  console.log("\n[1] votes:", hre.ethers.formatUnits(await token.getVotes(deployer.address), 18));
 
   // 2) Fast Timelock + Governor + target.
-  console.log("\n[2] deploying fast Timelock + Governor + target ...");
-  const Timelock = await hre.ethers.getContractFactory("TimelockController");
-  const timelock = await Timelock.deploy(TIMELOCK_DELAY, [], [], deployer.address);
-  await timelock.waitForDeployment();
-  const timelockAddr = await timelock.getAddress();
+  console.log("\n[2] Timelock + Governor + target ...");
+  let timelock;
+  let timelockAddr = process.env.TIMELOCK_ADDRESS;
+  if (timelockAddr) {
+    timelock = await hre.ethers.getContractAt("TimelockController", timelockAddr);
+    console.log("  reusing Timelock:", timelockAddr);
+  } else {
+    const Timelock = await hre.ethers.getContractFactory("TimelockController");
+    timelock = await Timelock.deploy(TIMELOCK_DELAY, [], [], deployer.address);
+    await timelock.waitForDeployment();
+    timelockAddr = await timelock.getAddress();
+  }
 
   const Governor = await hre.ethers.getContractFactory("SNGLLGovernor");
   const governor = await Governor.deploy(
@@ -77,7 +87,7 @@ async function main() {
   console.log("\n[3] wiring roles ...");
   await (await timelock.grantRole(await timelock.PROPOSER_ROLE(), govAddr)).wait();
   await (await timelock.grantRole(await timelock.CANCELLER_ROLE(), govAddr)).wait();
-  await (await timelock.grantRole(await timelock.EXECUTOR_ROLE, hre.ethers.ZeroAddress)).wait();
+  await (await timelock.grantRole(await timelock.EXECUTOR_ROLE(), hre.ethers.ZeroAddress)).wait();
   await (await timelock.renounceRole(await timelock.DEFAULT_ADMIN_ROLE(), deployer.address)).wait();
 
   // 4) Propose.
